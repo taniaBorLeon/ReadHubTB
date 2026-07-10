@@ -1,0 +1,23 @@
+{
+  "name": "@readhub/ai",
+  "version": "0.0.0",
+  "private": true,
+  "exports": {
+    "./embeddings": "./src/embeddings.ts",
+    "./chat": "./src/chat.ts",
+    "./constants": "./src/constants.ts",
+    "./services/embedding": "./src/services/embedding.service.ts",
+    "./services/vector-search": "./src/services/vector-search.service.ts",
+    "./services/context-builder": "./src/services/context-builder.service.ts",
+    "./services/chat": "./src/services/chat.service.ts"
+  },
+  "dependencies": {
+    "@readhub/database": "*",
+    "@readhub/types": "*",
+    "@readhub/shared": "*",
+    "@anthropic-ai/sdk": "^0.110.0",
+    "mammoth": "^1.12.0",
+    "pdf-parse": "^2.4.5",
+    "server-only": "^0.0.1"
+  }
+}

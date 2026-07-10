@@ -1,0 +1,9 @@
+{
+  "name": "@readhub/shared",
+  "version": "0.0.0",
+  "private": true,
+  "exports": {
+    "./storage-url": "./src/storage-url.ts",
+    "./storage-constants": "./src/storage.constants.ts"
+  }
+}

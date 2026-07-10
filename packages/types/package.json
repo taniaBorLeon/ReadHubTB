@@ -1,0 +1,15 @@
+{
+  "name": "@readhub/types",
+  "version": "0.0.0",
+  "private": true,
+  "exports": {
+    "./article": "./src/article.ts",
+    "./comment": "./src/comment.ts",
+    "./user": "./src/user.ts",
+    "./chat": "./src/chat.ts",
+    "./vector-search": "./src/vector-search.ts"
+  },
+  "dependencies": {
+    "@readhub/database": "*"
+  }
+}

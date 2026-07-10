@@ -1,12 +1,15 @@
 # dependencies
-/node_modules
+node_modules/
 
 # next
-/.next/
-/out/
+.next/
+out/
 
 # production
 /build
+
+# turborepo
+.turbo/
 
 # env
 .env
