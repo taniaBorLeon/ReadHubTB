@@ -1,0 +1,187 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+/* =============================================================================
+   ReadHub — Design Tokens
+   Inspirado en Medium / Dev.to / Hashnode: base neutra cálida, un único acento
+   de confianza (indigo), tarjetas blancas sobre fondo "papel" y lectura en
+   serif para el contenido largo. Todo el sistema de color vive en variables
+   HSL para soportar light/dark sin duplicar utilidades de Tailwind.
+   ============================================================================= */
+
+:root {
+  /* Tipografía: system stacks — sin dependencia de red para next dev/build. */
+  --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto,
+    "Helvetica Neue", Arial, sans-serif;
+  --font-serif: ui-serif, Georgia, Cambria, "Times New Roman", Times, serif;
+
+  /* Superficie base — blanco cálido tipo "papel", no blanco puro. */
+  --background: 40 20% 98.5%;
+  --foreground: 222 24% 12%;
+
+  /* Tarjetas y popovers ligeramente más blancos que el fondo. */
+  --card: 0 0% 100%;
+  --card-foreground: 222 24% 12%;
+  --popover: 0 0% 100%;
+  --popover-foreground: 222 24% 12%;
+
+  /* Acento principal — indigo de confianza para CTAs, links y foco. */
+  --primary: 243 75% 59%;
+  --primary-foreground: 0 0% 100%;
+
+  --secondary: 220 14% 95%;
+  --secondary-foreground: 222 24% 12%;
+
+  --muted: 220 14% 95%;
+  --muted-foreground: 220 9% 46%;
+
+  --accent: 243 70% 96%;
+  --accent-foreground: 243 75% 40%;
+
+  --destructive: 0 72% 51%;
+  --destructive-foreground: 0 0% 100%;
+
+  /* Acento secundario dedicado a "Me gusta" (fuera de la paleta neutra). */
+  --like: 350 89% 60%;
+  --like-foreground: 0 0% 100%;
+
+  --border: 220 13% 90%;
+  --input: 220 13% 90%;
+  --ring: 243 75% 59%;
+
+  --radius: 0.75rem;
+}
+
+.dark {
+  --background: 222 26% 7%;
+  --foreground: 210 20% 96%;
+
+  --card: 222 24% 10%;
+  --card-foreground: 210 20% 96%;
+  --popover: 222 24% 10%;
+  --popover-foreground: 210 20% 96%;
+
+  --primary: 243 90% 71%;
+  --primary-foreground: 224 40% 10%;
+
+  --secondary: 222 20% 15%;
+  --secondary-foreground: 210 20% 96%;
+
+  --muted: 222 20% 15%;
+  --muted-foreground: 217 12% 65%;
+
+  --accent: 243 40% 20%;
+  --accent-foreground: 243 90% 82%;
+
+  --destructive: 0 63% 42%;
+  --destructive-foreground: 210 20% 98%;
+
+  --like: 350 85% 65%;
+  --like-foreground: 224 40% 10%;
+
+  --border: 222 18% 20%;
+  --input: 222 18% 20%;
+  --ring: 243 90% 71%;
+}
+
+/* Puente entre las variables HSL de arriba y los tokens de tema de Tailwind
+   v4 (genera bg-primary, text-muted-foreground, rounded-xl, shadow-card, etc). */
+@theme inline {
+  --font-sans: var(--font-sans);
+  --font-serif: var(--font-serif);
+
+  --color-border: hsl(var(--border));
+  --color-input: hsl(var(--input));
+  --color-ring: hsl(var(--ring));
+  --color-background: hsl(var(--background));
+  --color-foreground: hsl(var(--foreground));
+  --color-card: hsl(var(--card));
+  --color-card-foreground: hsl(var(--card-foreground));
+  --color-popover: hsl(var(--popover));
+  --color-popover-foreground: hsl(var(--popover-foreground));
+  --color-primary: hsl(var(--primary));
+  --color-primary-foreground: hsl(var(--primary-foreground));
+  --color-secondary: hsl(var(--secondary));
+  --color-secondary-foreground: hsl(var(--secondary-foreground));
+  --color-muted: hsl(var(--muted));
+  --color-muted-foreground: hsl(var(--muted-foreground));
+  --color-accent: hsl(var(--accent));
+  --color-accent-foreground: hsl(var(--accent-foreground));
+  --color-destructive: hsl(var(--destructive));
+  --color-destructive-foreground: hsl(var(--destructive-foreground));
+  --color-like: hsl(var(--like));
+  --color-like-foreground: hsl(var(--like-foreground));
+
+  --radius-xl: calc(var(--radius) + 4px);
+  --radius-lg: var(--radius);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-sm: calc(var(--radius) - 4px);
+
+  --shadow-xs: 0 1px 2px 0 rgb(0 0 0 / 0.04);
+  --shadow-card: 0 1px 3px 0 rgb(0 0 0 / 0.06), 0 1px 2px -1px rgb(0 0 0 / 0.06);
+  --shadow-card-hover: 0 8px 24px -4px rgb(0 0 0 / 0.10),
+    0 2px 8px -2px rgb(0 0 0 / 0.06);
+
+  --ease-out-soft: cubic-bezier(0.16, 1, 0.3, 1);
+
+  --breakpoint-2xl: 1400px;
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  html {
+    @apply scroll-smooth;
+  }
+
+  body {
+    @apply bg-background text-foreground font-sans antialiased;
+    font-feature-settings: "cv11", "ss01";
+    text-rendering: optimizeLegibility;
+  }
+
+  /* Contenido largo (cuerpo de artículo) en serif, al estilo Medium. */
+  .prose-article {
+    @apply font-serif text-lg leading-relaxed text-foreground;
+  }
+
+  ::selection {
+    @apply bg-primary/20 text-foreground;
+  }
+
+  :focus-visible {
+    @apply outline-none ring-2 ring-ring ring-offset-2 ring-offset-background;
+  }
+}
+
+/* Tailwind v4 ya no centra ni agrega padding responsive a `container` por
+   defecto (comportamiento distinto a la config `theme.container` de v3).
+   Esta regla, sin @layer, tiene prioridad sobre las utilidades generadas y
+   reproduce exactamente el comportamiento anterior. */
+.container {
+  width: 100%;
+  margin-inline: auto;
+  padding-inline: 1rem;
+}
+
+@media (min-width: 640px) {
+  .container {
+    padding-inline: 1.5rem;
+  }
+}
+
+@media (min-width: 1024px) {
+  .container {
+    padding-inline: 2rem;
+  }
+}
+
+@media (min-width: 1400px) {
+  .container {
+    max-width: 1400px;
+  }
+}
