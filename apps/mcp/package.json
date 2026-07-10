@@ -2,5 +2,19 @@
   "name": "mcp",
   "version": "0.0.0",
   "private": true,
-  "description": "Reservado para el futuro servidor MCP de ReadHub. Sin implementación todavía."
+  "type": "module",
+  "description": "Reservado para el futuro servidor MCP de ReadHub. En esta fase solo verifica que puede consumir los paquetes compartidos del monorepo -- sin SDK de MCP, sin Tools/Resources/Prompts.",
+  "scripts": {
+    "verify": "tsx --conditions=react-server src/verify-integration.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@readhub/ai": "*",
+    "@readhub/database": "*",
+    "@readhub/types": "*",
+    "@readhub/shared": "*"
+  },
+  "devDependencies": {
+    "tsx": "^4.23.0"
+  }
 }
