@@ -3,11 +3,12 @@
   "version": "0.0.0",
   "private": true,
   "type": "module",
-  "description": "Servidor MCP de ReadHub: expone las capacidades de consulta de la plataforma como Tools, reutilizando la lógica compartida del monorepo.",
+  "description": "Servidor MCP de ReadHub: expone las capacidades de consulta de la plataforma como Tools y Resources, reutilizando la lógica compartida del monorepo.",
   "scripts": {
     "start": "tsx --conditions=react-server src/server.ts",
     "verify": "tsx --conditions=react-server src/verify-integration.ts",
     "verify:tools": "tsx --conditions=react-server src/verify-tools.ts",
+    "verify:resources": "tsx --conditions=react-server src/verify-resources.ts",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
