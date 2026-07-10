@@ -18,6 +18,11 @@ const EXPECTED_TOOLS = [
   "search_articles",
   "semantic_search_articles",
   "ask_readhub",
+  "compare_and_contrast_articles",
+  "extract_main_themes",
+  "generate_global_summary",
+  "identify_document_relations",
+  "build_research_context",
 ];
 
 async function main() {

@@ -3,11 +3,9 @@ import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 
 import { createServiceRoleClient } from "@readhub/database/service-role";
 import { getArticleWithStats } from "@readhub/database/queries/articles";
-import { searchRelevantChunks } from "@readhub/ai/services/vector-search";
 
 import { articleResourceMessage, textMessage } from "../lib/prompt-content.js";
-
-const MAX_TOPIC_ARTICLES = 4;
+import { resolveArticleIds } from "../lib/resolve-articles.js";
 
 export function registerCompareArticlesPrompt(server: McpServer): void {
   server.registerPrompt(
@@ -31,24 +29,7 @@ export function registerCompareArticlesPrompt(server: McpServer): void {
     },
     async ({ articleIds, topic }) => {
       const supabase = createServiceRoleClient();
-
-      let ids: string[];
-      let discoveryNote = "";
-
-      if (articleIds?.trim()) {
-        ids = [...new Set(articleIds.split(",").map((id) => id.trim()).filter(Boolean))];
-      } else if (topic?.trim()) {
-        const chunks = await searchRelevantChunks(topic, { matchCount: 10 });
-        ids = [...new Set(chunks.map((chunk) => chunk.articleId))].slice(
-          0,
-          MAX_TOPIC_ARTICLES,
-        );
-        discoveryNote = ` (descubiertos mediante búsqueda semántica sobre "${topic}")`;
-      } else {
-        throw new Error(
-          "Debes indicar `articleIds` (ids separados por coma) o `topic` (tema a buscar).",
-        );
-      }
+      const { ids, discoveryNote } = await resolveArticleIds({ articleIds, topic });
 
       if (ids.length < 2) {
         throw new Error(

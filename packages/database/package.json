@@ -8,7 +8,8 @@
     "./middleware": "./src/middleware.ts",
     "./service-role": "./src/service-role.ts",
     "./types": "./src/database.types.ts",
-    "./queries/articles": "./src/queries/articles.ts"
+    "./queries/articles": "./src/queries/articles.ts",
+    "./queries/chunks": "./src/queries/chunks.ts"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.45.4",
