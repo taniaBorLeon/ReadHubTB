@@ -5,6 +5,7 @@ import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js"
 
 import { registerAllTools } from "./tools/index.js";
 import { registerAllResources } from "./resources/index.js";
+import { registerAllPrompts } from "./prompts/index.js";
 
 export function createReadHubMcpServer(): McpServer {
   const server = new McpServer({
@@ -14,6 +15,7 @@ export function createReadHubMcpServer(): McpServer {
 
   registerAllTools(server);
   registerAllResources(server);
+  registerAllPrompts(server);
 
   return server;
 }
