@@ -1,4 +1,8 @@
 import { createClient } from "@readhub/database/client";
+import {
+  getArticleWithStats,
+  listArticlesWithStats,
+} from "@readhub/database/queries/articles";
 import type { ArticleDetail, ArticleWithStats } from "@readhub/types/article";
 
 export interface CreateArticleInput {
@@ -10,21 +14,13 @@ export interface CreateArticleInput {
 }
 
 export async function listArticles(): Promise<ArticleWithStats[]> {
-  const supabase = createClient();
-  const { data, error } = await supabase.rpc("list_articles_with_stats");
-  if (error) throw error;
-  return data ?? [];
+  return listArticlesWithStats(createClient());
 }
 
 export async function getArticle(
   articleId: string,
 ): Promise<ArticleDetail | null> {
-  const supabase = createClient();
-  const { data, error } = await supabase.rpc("get_article_with_stats", {
-    p_article_id: articleId,
-  });
-  if (error) throw error;
-  return data?.[0] ?? null;
+  return getArticleWithStats(createClient(), articleId);
 }
 
 function triggerArticleIndexing(articleId: string): void {
