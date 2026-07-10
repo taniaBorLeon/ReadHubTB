@@ -10,6 +10,7 @@
     "verify:tools": "tsx --conditions=react-server src/verify-tools.ts",
     "verify:resources": "tsx --conditions=react-server src/verify-resources.ts",
     "verify:prompts": "tsx --conditions=react-server src/verify-prompts.ts",
+    "verify:all": "npm run verify && npm run verify:tools && npm run verify:resources && npm run verify:prompts",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {

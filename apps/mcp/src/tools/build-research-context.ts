@@ -4,7 +4,11 @@ import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { searchRelevantChunks } from "@readhub/ai/services/vector-search";
 import { buildRagContext } from "@readhub/ai/services/context-builder";
 
-import { toErrorResult, toToolResult } from "../lib/tool-result.js";
+import {
+  READ_ONLY_TOOL_ANNOTATIONS,
+  toErrorResult,
+  toToolResult,
+} from "../lib/tool-result.js";
 
 export function registerBuildResearchContextTool(server: McpServer): void {
   server.registerTool(
@@ -13,6 +17,7 @@ export function registerBuildResearchContextTool(server: McpServer): void {
       title: "Construir contexto de investigación",
       description:
         "Recupera y organiza los fragmentos más relevantes de ReadHub para un tema de investigación, con sus fuentes citadas -- el mismo paso de recuperación y construcción de contexto que usa ask_readhub, pero sin generar una respuesta final. Útil para que el cliente MCP construya su propio análisis o investigación a partir de fuentes reales de ReadHub.",
+      annotations: READ_ONLY_TOOL_ANNOTATIONS,
       inputSchema: {
         topic: z.string().min(1).describe("Tema o pregunta de investigación"),
         matchCount: z

@@ -14,7 +14,7 @@ export function registerSummarizeArticlePrompt(server: McpServer): void {
       description:
         "Genera un resumen conciso de un artículo de ReadHub a partir de su id. Reutiliza la misma consulta que la Tool get_article y el Resource readhub://articles/{articleId}.",
       argsSchema: {
-        articleId: z.string().describe("Id del artículo a resumir"),
+        articleId: z.string().uuid().describe("Id (UUID) del artículo a resumir"),
         maxSentences: z
           .string()
           .optional()

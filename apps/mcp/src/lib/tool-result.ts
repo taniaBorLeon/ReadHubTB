@@ -1,4 +1,15 @@
-import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
+import type { CallToolResult, ToolAnnotations } from "@modelcontextprotocol/sdk/types.js";
+
+/**
+ * Todas las Tools de ReadHub son de solo lectura sobre su propio dominio de
+ * datos (nunca escriben, y no interactúan con entidades externas fuera de
+ * ReadHub/Claude): mismas annotations para las 10, compartidas para no
+ * repetir el mismo literal en cada archivo.
+ */
+export const READ_ONLY_TOOL_ANNOTATIONS: ToolAnnotations = {
+  readOnlyHint: true,
+  openWorldHint: false,
+};
 
 /**
  * Formato de respuesta compartido por todas las Tools: serializa el

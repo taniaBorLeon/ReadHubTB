@@ -4,7 +4,11 @@ import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { createServiceRoleClient } from "@readhub/database/service-role";
 import { searchArticlesByKeyword } from "@readhub/database/queries/articles";
 
-import { toErrorResult, toToolResult } from "../lib/tool-result.js";
+import {
+  READ_ONLY_TOOL_ANNOTATIONS,
+  toErrorResult,
+  toToolResult,
+} from "../lib/tool-result.js";
 
 export function registerSearchArticlesTool(server: McpServer): void {
   server.registerTool(
@@ -19,6 +23,7 @@ export function registerSearchArticlesTool(server: McpServer): void {
           .min(1)
           .describe("Palabra o frase a buscar en título/resumen"),
       },
+      annotations: READ_ONLY_TOOL_ANNOTATIONS,
     },
     async ({ query }) => {
       try {

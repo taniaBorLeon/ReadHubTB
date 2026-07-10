@@ -1,12 +1,13 @@
 import { z } from "zod";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 
-import { createServiceRoleClient } from "@readhub/database/service-role";
-import { generateChatCompletion } from "@readhub/ai/chat";
-
-import { resolveArticleIds } from "../lib/resolve-articles.js";
-import { fetchArticlesForAnalysis, formatArticlesForPrompt } from "../lib/article-corpus.js";
-import { toErrorResult, toToolResult } from "../lib/tool-result.js";
+import { runContentAnalysis } from "../lib/content-analysis.js";
+import { formatArticlesForPrompt } from "../lib/article-corpus.js";
+import {
+  READ_ONLY_TOOL_ANNOTATIONS,
+  toErrorResult,
+  toToolResult,
+} from "../lib/tool-result.js";
 
 const SYSTEM_PROMPT = [
   "Eres un analista de contenido de ReadHub.",
@@ -22,6 +23,7 @@ export function registerGenerateGlobalSummaryTool(server: McpServer): void {
       title: "Generar resumen global",
       description:
         "Genera un resumen único y cohesionado que sintetiza varios artículos de ReadHub como un solo cuerpo de conocimiento, en vez de resumirlos por separado. Acepta ids explícitos o un tema para descubrir artículos relevantes mediante búsqueda semántica.",
+      annotations: READ_ONLY_TOOL_ANNOTATIONS,
       inputSchema: {
         articleIds: z
           .string()
@@ -37,22 +39,15 @@ export function registerGenerateGlobalSummaryTool(server: McpServer): void {
     },
     async ({ articleIds, topic }) => {
       try {
-        const supabase = createServiceRoleClient();
-        const { ids, discoveryNote } = await resolveArticleIds({ articleIds, topic });
+        const { articles, discoveryNote, analysis } = await runContentAnalysis(
+          { articleIds, topic },
+          1,
+          SYSTEM_PROMPT,
+          (found) =>
+            `${formatArticlesForPrompt(found)}\n\nGenera un resumen global de los ${found.length} documentos anteriores.`,
+        );
 
-        const articles = await fetchArticlesForAnalysis(supabase, ids);
-        if (articles.length === 0) {
-          throw new Error("No se encontró ningún artículo válido para resumir.");
-        }
-
-        const userPrompt = `${formatArticlesForPrompt(articles)}\n\nGenera un resumen global de los ${articles.length} documentos anteriores.`;
-        const analysis = await generateChatCompletion(SYSTEM_PROMPT, userPrompt);
-
-        return toToolResult({
-          articles: articles.map((article) => ({ id: article.id, title: article.title })),
-          discoveryNote,
-          summary: analysis,
-        });
+        return toToolResult({ articles, discoveryNote, summary: analysis });
       } catch (error) {
         return toErrorResult(error);
       }

@@ -4,7 +4,11 @@ import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { createServiceRoleClient } from "@readhub/database/service-role";
 import { getArticleWithStats } from "@readhub/database/queries/articles";
 
-import { toErrorResult, toToolResult } from "../lib/tool-result.js";
+import {
+  READ_ONLY_TOOL_ANNOTATIONS,
+  toErrorResult,
+  toToolResult,
+} from "../lib/tool-result.js";
 
 export function registerGetArticleTool(server: McpServer): void {
   server.registerTool(
@@ -16,6 +20,7 @@ export function registerGetArticleTool(server: McpServer): void {
       inputSchema: {
         articleId: z.string().uuid().describe("ID (UUID) del artículo"),
       },
+      annotations: READ_ONLY_TOOL_ANNOTATIONS,
     },
     async ({ articleId }) => {
       try {

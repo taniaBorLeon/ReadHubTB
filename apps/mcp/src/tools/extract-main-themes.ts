@@ -1,12 +1,13 @@
 import { z } from "zod";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 
-import { createServiceRoleClient } from "@readhub/database/service-role";
-import { generateChatCompletion } from "@readhub/ai/chat";
-
-import { resolveArticleIds } from "../lib/resolve-articles.js";
-import { fetchArticlesForAnalysis, formatArticlesForPrompt } from "../lib/article-corpus.js";
-import { toErrorResult, toToolResult } from "../lib/tool-result.js";
+import { runContentAnalysis } from "../lib/content-analysis.js";
+import { formatArticlesForPrompt } from "../lib/article-corpus.js";
+import {
+  READ_ONLY_TOOL_ANNOTATIONS,
+  toErrorResult,
+  toToolResult,
+} from "../lib/tool-result.js";
 
 const SYSTEM_PROMPT = [
   "Eres un analista de contenido de ReadHub.",
@@ -22,6 +23,7 @@ export function registerExtractMainThemesTool(server: McpServer): void {
       title: "Extraer temas principales",
       description:
         "Identifica los temas y tópicos principales de uno o varios artículos de ReadHub, indicando en qué documento aparece cada uno. Acepta ids explícitos o un tema para descubrir artículos relevantes mediante búsqueda semántica. Opera sobre el contenido completo indexado (article_chunks), no solo el resumen.",
+      annotations: READ_ONLY_TOOL_ANNOTATIONS,
       inputSchema: {
         articleIds: z
           .string()
@@ -37,22 +39,15 @@ export function registerExtractMainThemesTool(server: McpServer): void {
     },
     async ({ articleIds, topic }) => {
       try {
-        const supabase = createServiceRoleClient();
-        const { ids, discoveryNote } = await resolveArticleIds({ articleIds, topic });
+        const { articles, discoveryNote, analysis } = await runContentAnalysis(
+          { articleIds, topic },
+          1,
+          SYSTEM_PROMPT,
+          (found) =>
+            `${formatArticlesForPrompt(found)}\n\nExtrae los temas principales de los ${found.length} documentos anteriores.`,
+        );
 
-        const articles = await fetchArticlesForAnalysis(supabase, ids);
-        if (articles.length === 0) {
-          throw new Error("No se encontró ningún artículo válido para analizar.");
-        }
-
-        const userPrompt = `${formatArticlesForPrompt(articles)}\n\nExtrae los temas principales de los ${articles.length} documentos anteriores.`;
-        const analysis = await generateChatCompletion(SYSTEM_PROMPT, userPrompt);
-
-        return toToolResult({
-          articles: articles.map((article) => ({ id: article.id, title: article.title })),
-          discoveryNote,
-          analysis,
-        });
+        return toToolResult({ articles, discoveryNote, analysis });
       } catch (error) {
         return toErrorResult(error);
       }

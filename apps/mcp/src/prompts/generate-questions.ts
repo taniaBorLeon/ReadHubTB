@@ -14,7 +14,10 @@ export function registerGenerateQuestionsPrompt(server: McpServer): void {
       description:
         "Genera preguntas de comprensión o discusión sobre un artículo de ReadHub, útiles para evaluar lectura o abrir debate. Reutiliza la misma consulta que la Tool get_article.",
       argsSchema: {
-        articleId: z.string().describe("Id del artículo sobre el que generar preguntas"),
+        articleId: z
+          .string()
+          .uuid()
+          .describe("Id (UUID) del artículo sobre el que generar preguntas"),
         count: z
           .string()
           .optional()

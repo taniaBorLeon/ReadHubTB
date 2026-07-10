@@ -3,7 +3,11 @@ import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 
 import { answerQuery } from "@readhub/ai/services/chat";
 
-import { toErrorResult, toToolResult } from "../lib/tool-result.js";
+import {
+  READ_ONLY_TOOL_ANNOTATIONS,
+  toErrorResult,
+  toToolResult,
+} from "../lib/tool-result.js";
 
 export function registerAskReadHubTool(server: McpServer): void {
   server.registerTool(
@@ -12,6 +16,7 @@ export function registerAskReadHubTool(server: McpServer): void {
       title: "Preguntar a ReadHub",
       description:
         "Responde una pregunta en lenguaje natural utilizando exclusivamente el conocimiento publicado en ReadHub. Ejecuta el pipeline RAG completo (búsqueda semántica + construcción de contexto + Claude) reutilizando el mismo servicio conversacional que usa el asistente de la web, e incluye las fuentes citadas.",
+      annotations: READ_ONLY_TOOL_ANNOTATIONS,
       inputSchema: {
         question: z
           .string()

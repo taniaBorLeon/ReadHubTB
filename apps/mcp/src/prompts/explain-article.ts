@@ -14,7 +14,7 @@ export function registerExplainArticlePrompt(server: McpServer): void {
       description:
         "Explica el contenido de un artículo de ReadHub de forma accesible, ajustando el nivel a la audiencia indicada. Reutiliza la misma consulta que la Tool get_article.",
       argsSchema: {
-        articleId: z.string().describe("Id del artículo a explicar"),
+        articleId: z.string().uuid().describe("Id (UUID) del artículo a explicar"),
         audience: z
           .string()
           .optional()

@@ -14,7 +14,10 @@ export function registerExtractKeyConceptsPrompt(server: McpServer): void {
       description:
         "Extrae los conceptos y términos clave de un artículo de ReadHub, cada uno con una definición breve. Reutiliza la misma consulta que la Tool get_article.",
       argsSchema: {
-        articleId: z.string().describe("Id del artículo del que extraer conceptos clave"),
+        articleId: z
+          .string()
+          .uuid()
+          .describe("Id (UUID) del artículo del que extraer conceptos clave"),
       },
     },
     async ({ articleId }) => {
