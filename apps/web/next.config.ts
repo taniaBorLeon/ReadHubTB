@@ -19,6 +19,16 @@ const nextConfig: NextConfig = {
       },
     ],
   },
+  // ESLint corre como su propio paso independiente (`npm run lint`, ya
+  // integrado en el pipeline de CI): antes de que existiera eslint.config.mjs
+  // Next.js no tenía nada que lintear durante `next build` y este siempre
+  // pasaba; con la config ya creada, `next build` empezó a bloquearse por su
+  // propio gate de ESLint interno, duplicando (y acoplando al build) lo que
+  // ya cubre el paso de lint del pipeline. Se desactiva aquí para no romper
+  // el comportamiento de build ya existente.
+  eslint: {
+    ignoreDuringBuilds: true,
+  },
 };
 
 export default nextConfig;

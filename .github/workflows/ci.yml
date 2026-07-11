@@ -1,0 +1,152 @@
+name: CI
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+
+# Cancela una ejecución en curso de la misma rama/PR cuando llega un nuevo
+# push, en vez de dejar corriendo (y consumiendo minutos de CI) una revisión
+# ya obsoleta.
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+# Solo lectura del repositorio: este pipeline valida, no despliega ni
+# escribe en el repo (sin comentarios de PR, sin publicar paquetes, etc.).
+permissions:
+  contents: read
+
+env:
+  NODE_VERSION: "24"
+
+jobs:
+  # -----------------------------------------------------------------------
+  # TypeScript + ESLint + Vitest sobre los 7 workspaces del monorepo. No
+  # depende de Supabase/OpenAI/Anthropic reales (los servicios con
+  # `import "server-only"` se prueban con mocks, ver packages/ai/src/**.test.ts).
+  # -----------------------------------------------------------------------
+  checks:
+    name: TypeScript, ESLint y Vitest
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout del repositorio
+        uses: actions/checkout@v4
+
+      - name: Configurar Node.js ${{ env.NODE_VERSION }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+
+      # Caché del cache de tareas de Turborepo (distinto de la caché de
+      # dependencias de npm ya cubierta por actions/setup-node de arriba):
+      # si el hash de una tarea no cambió desde una ejecución anterior,
+      # turbo la sirve desde aquí en vez de re-ejecutarla.
+      - name: Restaurar caché de Turborepo
+        uses: actions/cache@v4
+        with:
+          path: |
+            .turbo/cache
+            apps/*/.turbo/cache
+            packages/*/.turbo/cache
+          key: turbo-${{ runner.os }}-${{ hashFiles('package-lock.json') }}-${{ github.sha }}
+          restore-keys: |
+            turbo-${{ runner.os }}-${{ hashFiles('package-lock.json') }}-
+            turbo-${{ runner.os }}-
+
+      - name: Instalar dependencias
+        run: npm ci
+
+      - name: TypeScript (turbo run typecheck)
+        run: npm run typecheck
+
+      - name: ESLint (turbo run lint)
+        run: npm run lint
+
+      # --reporter=default conserva la salida legible habitual en los logs;
+      # --reporter=junit además escribe un artefacto de prueba por paquete
+      # (vitest-report.xml), que no se genera en `npm run test` normal.
+      # Se invoca turbo directamente (no vía `npm run test --`) porque turbo
+      # necesita su propio separador `--` para reenviar estos flags a
+      # `vitest run` en cada paquete; con `npm run test -- ...` turbo los
+      # interpreta como flags propios y falla.
+      - name: Vitest (turbo run test)
+        run: npx turbo run test -- --reporter=default --reporter=junit --outputFile.junit=vitest-report.xml
+
+      - name: Publicar artefactos de Vitest
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: vitest-report
+          path: "**/vitest-report.xml"
+          retention-days: 7
+          if-no-files-found: ignore
+
+  # -----------------------------------------------------------------------
+  # Playwright E2E: arranca la app real (`next dev`) contra un proyecto de
+  # Supabase real -- necesita las credenciales configuradas como Secrets del
+  # repositorio (Settings > Secrets and variables > Actions). Sin ellas este
+  # job falla de forma explícita en vez de saltarse la validación en
+  # silencio: no hay atajos para evitar depender del backend real.
+  # -----------------------------------------------------------------------
+  e2e:
+    name: Playwright E2E
+    runs-on: ubuntu-latest
+    needs: checks
+    steps:
+      - name: Checkout del repositorio
+        uses: actions/checkout@v4
+
+      - name: Configurar Node.js ${{ env.NODE_VERSION }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+
+      - name: Instalar dependencias
+        run: npm ci
+
+      - name: Instalar navegador de Playwright (Chromium)
+        run: npx playwright install --with-deps chromium
+        working-directory: apps/web
+
+      # Ningún valor sensible vive en este archivo: todos se leen de
+      # Secrets del repositorio en tiempo de ejecución. Si faltan, Next.js
+      # arranca igual pero la autenticación real fallará (comportamiento
+      # esperado, no un bug del pipeline) -- exactamente el mismo límite ya
+      # documentado en apps/web/e2e/data/users.ts.
+      - name: Playwright E2E (turbo run test:e2e)
+        run: npm run test:e2e
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          E2E_USER_EMAIL: ${{ secrets.E2E_USER_EMAIL }}
+          E2E_USER_PASSWORD: ${{ secrets.E2E_USER_PASSWORD }}
+
+      # El reporte HTML se genera siempre (reporter: "html" en
+      # playwright.config.ts); capturas y trazas en test-results/ solo
+      # existen cuando algún test falló (screenshot/trace configurados
+      # "only-on-failure"/"on-first-retry") -- por eso ambos pasos van con
+      # if-no-files-found: ignore en vez de condicionarlos a failure(): el
+      # propio contenido generado ya distingue "hubo errores" de "todo pasó".
+      - name: Publicar reporte HTML de Playwright
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: apps/web/playwright-report
+          retention-days: 7
+          if-no-files-found: ignore
+
+      - name: Publicar capturas y trazas de fallos
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-test-results
+          path: apps/web/test-results
+          retention-days: 7
+          if-no-files-found: ignore

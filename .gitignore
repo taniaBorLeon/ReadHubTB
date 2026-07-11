@@ -29,3 +29,6 @@ next-env.d.ts
 playwright-report/
 test-results/
 blob-report/
+
+# vitest (artefacto JUnit generado solo en CI, ver .github/workflows/ci.yml)
+vitest-report.xml
