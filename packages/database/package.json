@@ -2,6 +2,9 @@
   "name": "@readhub/database",
   "version": "0.0.0",
   "private": true,
+  "scripts": {
+    "test": "vitest run"
+  },
   "exports": {
     "./client": "./src/client.ts",
     "./server": "./src/server.ts",
