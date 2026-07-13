@@ -121,6 +121,26 @@ readhub/
 3. `npm install`
 4. `npm run dev`
 
+> El `.env.example` real vive en `apps/web/.env.example` (monorepo con npm
+> workspaces: `apps/web`, `apps/mcp`, `packages/*`).
+
+## CI/CD
+
+`.github/workflows/ci.yml` corre en cada `push` a `main`/`master` y en cada
+`pull_request`: `typecheck` → `lint` → `test` (Vitest) → `test:e2e`
+(Playwright), con reportes publicados como artefactos. Ver
+[`.github/SECRETS.md`](.github/SECRETS.md) para qué secrets hay que
+configurar en GitHub antes de que el job `e2e` pueda pasar.
+
+Los mismos comandos corren en local desde la raíz del monorepo:
+
+```sh
+npm run typecheck   # tsc --noEmit en cada workspace
+npm run lint        # eslint (apps/web)
+npm run test        # vitest run en apps/web + packages/{database,ai,shared}
+npm run test:e2e    # playwright test (arranca `next dev` automáticamente)
+```
+
 ## Decisiones arquitectónicas relevantes
 
 - **`article_chunks` a nivel de chunk, no de artículo completo**: permite recuperación precisa y citar fragmentos concretos.
