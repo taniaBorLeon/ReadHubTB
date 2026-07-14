@@ -29,14 +29,10 @@ export function useUpload() {
     setUploading(true);
     setErrors({});
     try {
-      const documentPath = await uploadArticleFile(
-        input.authorId,
-        input.documentFile as File,
-      );
-      const imagePath = await uploadArticleFile(
-        input.authorId,
-        input.imageFile as File,
-      );
+      const [documentPath, imagePath] = await Promise.all([
+        uploadArticleFile(input.authorId, input.documentFile as File),
+        uploadArticleFile(input.authorId, input.imageFile as File),
+      ]);
       return await createArticle({
         authorId: input.authorId,
         title: input.title.trim(),

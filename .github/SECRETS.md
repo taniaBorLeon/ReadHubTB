@@ -33,11 +33,33 @@ está pensado para `supabase db reset` contra un stack local — si
 `NEXT_PUBLIC_SUPABASE_URL` apunta a un proyecto remoto, hay que sembrarlo ahí
 manualmente o usar una cuenta real ya existente vía estos dos secrets.
 
+## Secrets del job `performance`
+
+Reutiliza los mismos secrets de Supabase ya listados arriba (`NEXT_PUBLIC_SUPABASE_URL`,
+`NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`), necesarios para
+que el Production Build compile (las `NEXT_PUBLIC_*` se inlinean en el bundle)
+y para que `next start` responda sin errores al auditar `/login` y `/register`
+con Lighthouse (el middleware llama a `supabase.auth.getUser()` en cada
+request). No requiere ningún secret adicional propio.
+
+## Secrets del job `deploy`
+
+| Secret | Usado por | De dónde sacarlo | Requerido para |
+|---|---|---|---|
+| `VERCEL_TOKEN` | Vercel CLI (`vercel pull`/`build`/`deploy`) | vercel.com → Account Settings → Tokens → Create | job `deploy` |
+| `VERCEL_ORG_ID` | Vercel CLI | Archivo `.vercel/project.json` tras correr `vercel link` una vez localmente, o Vercel → Project Settings → General | job `deploy` |
+| `VERCEL_PROJECT_ID` | Vercel CLI | Mismo origen que `VERCEL_ORG_ID` | job `deploy` |
+
+El proyecto de Vercel debe tener configurado **Root Directory = `apps/web`**
+en Project Settings (monorepo) y sus propias variables de entorno de
+Production (`NEXT_PUBLIC_SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`,
+`OPENAI_API_KEY`, `ANTHROPIC_API_KEY`) cargadas en el dashboard de Vercel —
+`vercel pull` las trae automáticamente durante el deploy, no hace falta
+duplicarlas como Secrets de GitHub para este job.
+
 ## Qué NO hace falta configurar
 
 - No hace falta ningún secret para el job `checks` (`typecheck`, `lint`,
   `test`): los servicios que tocan `import "server-only"` se prueban con
   mocks (ver `packages/ai/src/**.test.ts`, `apps/web/services/**.test.ts`),
   nunca contra Supabase/OpenAI/Anthropic reales.
-- No hace falta ningún token de despliegue: este pipeline valida, no
-  despliega nada.

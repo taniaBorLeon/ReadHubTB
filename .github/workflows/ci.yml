@@ -150,3 +150,163 @@ jobs:
           path: apps/web/test-results
           retention-days: 7
           if-no-files-found: ignore
+
+  # -----------------------------------------------------------------------
+  # Auditoría de rendimiento: solo corre si `checks` y `e2e` ya pasaron (no
+  # tiene sentido medir el rendimiento de un build cuyo comportamiento
+  # funcional todavía no está validado). Genera el Production Build real,
+  # mide el tamaño del bundle contra un umbral fijo y audita Core Web Vitals
+  # con Lighthouse CI sobre el servidor de producción ya construido. Si
+  # cualquiera de los dos controles falla, este job falla y el job `deploy`
+  # (que depende de él) nunca se ejecuta -- así es como se bloquea el
+  # despliegue sin necesitar lógica adicional de aprobación manual.
+  # -----------------------------------------------------------------------
+  performance:
+    name: Performance Budget (Build, Bundle Size, Lighthouse)
+    runs-on: ubuntu-latest
+    needs: [checks, e2e]
+    env:
+      # Límite del bundle compartido por todas las páginas ("First Load JS
+      # shared by all" en la tabla que imprime `next build`). Es el costo de
+      # JS que paga cualquier ruta de la app; un límite fijo aquí evita que
+      # una dependencia nueva o un import mal ubicado lo infle sin que nadie
+      # lo note hasta producción.
+      BUNDLE_SIZE_LIMIT_KB: 200
+    steps:
+      - name: Checkout del repositorio
+        uses: actions/checkout@v4
+
+      - name: Configurar Node.js ${{ env.NODE_VERSION }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+
+      - name: Instalar dependencias
+        run: npm ci
+
+      # Mismas variables que ya usa el job `e2e`: NEXT_PUBLIC_* se inlinean
+      # en el bundle del cliente durante el build, y el resto las necesita
+      # `next start` en el paso de Lighthouse más abajo (el middleware llama
+      # a Supabase Auth en cada request, incluida la home que Lighthouse
+      # visita).
+      - name: Generar Production Build (turbo run build)
+        run: npx turbo run build --filter=web | tee build-output.log
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+
+      # Lee la tabla que `next build` ya imprime por stdout (columna "First
+      # Load JS") en vez de agregar un analizador de bundle como dependencia
+      # nueva -- el propio build de Next ya calcula y muestra estos números.
+      - name: Analizar tamaño del bundle
+        run: |
+          SHARED_LINE=$(grep -E "First Load JS shared by all" build-output.log || true)
+          if [ -z "$SHARED_LINE" ]; then
+            echo "No se encontró la línea 'First Load JS shared by all' en la salida de next build."
+            echo "$(cat build-output.log)"
+            exit 1
+          fi
+
+          SHARED_KB=$(echo "$SHARED_LINE" | grep -oE "[0-9]+(\.[0-9]+)? kB" | head -1 | grep -oE "[0-9]+(\.[0-9]+)?")
+          echo "First Load JS compartido: ${SHARED_KB} kB (límite: ${BUNDLE_SIZE_LIMIT_KB} kB)"
+
+          {
+            echo "# Reporte de tamaño de bundle"
+            echo ""
+            echo "- First Load JS compartido: ${SHARED_KB} kB (límite: ${BUNDLE_SIZE_LIMIT_KB} kB)"
+            echo ""
+            echo '```'
+            grep -A 100 "Route (app)" build-output.log || true
+            echo '```'
+          } > bundle-size-report.md
+
+          awk -v val="$SHARED_KB" -v limit="$BUNDLE_SIZE_LIMIT_KB" 'BEGIN { exit !(val > limit) }' \
+            && { echo "❌ El bundle compartido (${SHARED_KB} kB) supera el límite (${BUNDLE_SIZE_LIMIT_KB} kB)."; exit 1; } \
+            || echo "✅ Bundle dentro del límite."
+        working-directory: apps/web
+
+      - name: Publicar reporte de tamaño de bundle
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: bundle-size-report
+          path: apps/web/bundle-size-report.md
+          retention-days: 30
+          if-no-files-found: ignore
+
+      # Lighthouse CI arranca `next start` sobre el build ya generado
+      # (startServerCommand) y audita las páginas públicas de la app --
+      # /login y /register son las únicas accesibles sin una sesión real de
+      # Supabase, así que son las únicas que se pueden auditar en CI sin
+      # simular un login completo. Los umbrales de aprobación/rechazo viven
+      # en apps/web/lighthouserc.json, no aquí.
+      - name: Auditoría Lighthouse (Core Web Vitals)
+        uses: treosh/lighthouse-ci-action@v11
+        with:
+          urls: |
+            http://localhost:3000/login
+            http://localhost:3000/register
+          configPath: apps/web/lighthouserc.json
+          startServerCommand: npm run start --workspace=web
+          startServerReadyPattern: "Ready in"
+          startServerReadyTimeout: 60000
+          runs: 3
+          uploadArtifacts: true
+          temporaryPublicStorage: true
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+
+  # -----------------------------------------------------------------------
+  # Despliegue a Vercel. Solo corre en push a main/master (nunca en PRs) y
+  # solo si checks + e2e + performance ya pasaron -- `needs` es justamente el
+  # mecanismo de bloqueo: si `performance` falla (umbrales incumplidos), este
+  # job se salta automáticamente, sin lógica adicional de aprobación.
+  # -----------------------------------------------------------------------
+  deploy:
+    name: Deploy a Vercel (Production)
+    runs-on: ubuntu-latest
+    needs: [checks, e2e, performance]
+    if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master')
+    environment:
+      name: production
+      url: ${{ steps.deploy.outputs.url }}
+    env:
+      VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+      VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+    steps:
+      - name: Checkout del repositorio
+        uses: actions/checkout@v4
+
+      - name: Configurar Node.js ${{ env.NODE_VERSION }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Instalar Vercel CLI
+        run: npm install --global vercel@latest
+
+      # Flujo oficial de Vercel para repos sin la integración nativa de Git:
+      # pull (trae la config + variables de entorno ya configuradas en el
+      # proyecto de Vercel) -> build (usa esa config para producir el
+      # artefacto desplegable) -> deploy (sube el artefacto ya construido,
+      # sin reconstruir nada del lado de Vercel).
+      - name: Vercel — pull de configuración de producción
+        run: vercel pull --yes --environment=production --token=${{ secrets.VERCEL_TOKEN }}
+        working-directory: apps/web
+
+      - name: Vercel — build de producción
+        run: vercel build --prod --token=${{ secrets.VERCEL_TOKEN }}
+        working-directory: apps/web
+
+      - name: Vercel — deploy (prebuilt)
+        id: deploy
+        run: |
+          url=$(vercel deploy --prebuilt --prod --token=${{ secrets.VERCEL_TOKEN }})
+          echo "url=$url" >> "$GITHUB_OUTPUT"
+        working-directory: apps/web

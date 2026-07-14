@@ -1,3 +1,4 @@
+import { memo } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { Eye, Heart } from "lucide-react";
@@ -7,13 +8,17 @@ import { ROUTES } from "@/lib/constants/routes";
 import { getPublicStorageUrl } from "@readhub/shared/storage-url";
 import type { ArticleWithStats } from "@readhub/types/article";
 
+const dateFormatter = new Intl.DateTimeFormat("es", { dateStyle: "medium" });
+
 function formatDate(dateString: string): string {
-  return new Intl.DateTimeFormat("es", { dateStyle: "medium" }).format(
-    new Date(dateString),
-  );
+  return dateFormatter.format(new Date(dateString));
 }
 
-export function ArticleCard({ article }: { article: ArticleWithStats }) {
+export const ArticleCard = memo(function ArticleCard({
+  article,
+}: {
+  article: ArticleWithStats;
+}) {
   const imageUrl = article.image_path
     ? getPublicStorageUrl(article.image_path)
     : null;
@@ -67,4 +72,4 @@ export function ArticleCard({ article }: { article: ArticleWithStats }) {
       </Card>
     </Link>
   );
-}
+});

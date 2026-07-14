@@ -19,7 +19,10 @@ export class LoginPage {
     this.emailInput = page.getByLabel("Correo electrónico");
     this.passwordInput = page.getByLabel("Contraseña");
     this.submitButton = page.getByRole("button", { name: "Iniciar sesión" });
-    this.alert = page.getByRole("alert");
+    // Next.js inyecta su propio `role="alert"` (#__next-route-announcer__)
+    // para anunciar navegaciones a lectores de pantalla; se excluye para no
+    // matchear dos elementos con el mismo rol.
+    this.alert = page.locator('[role="alert"]:not(#__next-route-announcer__)');
   }
 
   async goto(): Promise<void> {

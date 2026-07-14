@@ -19,6 +19,12 @@ const nextConfig: NextConfig = {
       },
     ],
   },
+  // lucide-react ya se importa ícono por ícono (tree-shakeable), pero su
+  // barrel file de entrada es grande: esto evita que el bundler lo procese
+  // entero en dev/build y solo resuelve los módulos de los íconos usados.
+  experimental: {
+    optimizePackageImports: ["lucide-react"],
+  },
   // ESLint corre como su propio paso independiente (`npm run lint`, ya
   // integrado en el pipeline de CI): antes de que existiera eslint.config.mjs
   // Next.js no tenía nada que lintear durante `next build` y este siempre

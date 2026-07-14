@@ -67,27 +67,15 @@ describe("generateEmbeddings", () => {
     expect(result[1]).toEqual(validEmbedding(1));
   });
 
-  // BUG CONOCIDO (no corregido aquí: esta tarea es solo de testing, no debe
-  // cambiar comportamiento): el array de resultados se crea con
-  // `new Array(texts.length)`, que deja "huecos" reales en los índices no
-  // asignados. `Array.prototype.map`/`.filter` saltan los huecos por
-  // especificación de JS, así que el chequeo de "respuesta parcial" nunca ve
-  // el índice faltante y el `undefined` se cuela en silencio -- justo lo que
-  // el comentario del código dice que no debería pasar. `it.fails` documenta
-  // el comportamiento real sin dejar un test en rojo ni mentir sobre qué
-  // hace hoy el código.
-  it.fails(
-    "[bug conocido] debería lanzar si el proveedor no devuelve resultado para todos los textos enviados",
-    async () => {
-      vi.mocked(fetch).mockResolvedValue(
-        jsonResponse({ data: [{ index: 0, embedding: validEmbedding(0) }] }),
-      );
+  it("lanza si el proveedor no devuelve resultado para todos los textos enviados", async () => {
+    vi.mocked(fetch).mockResolvedValue(
+      jsonResponse({ data: [{ index: 0, embedding: validEmbedding(0) }] }),
+    );
 
-      await expect(generateEmbeddings(["texto A", "texto B"])).rejects.toThrow(
-        /no devolvió resultado para 1 de 2 textos/,
-      );
-    },
-  );
+    await expect(generateEmbeddings(["texto A", "texto B"])).rejects.toThrow(
+      /no devolvió resultado para 1 de 2 textos/,
+    );
+  });
 
   it("lanza si un embedding tiene una dimensión inesperada", async () => {
     vi.mocked(fetch).mockResolvedValue(

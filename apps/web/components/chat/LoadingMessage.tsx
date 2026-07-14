@@ -1,8 +1,9 @@
+import { memo } from "react";
 import { Bot } from "lucide-react";
 
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 
-export function LoadingMessage() {
+export const LoadingMessage = memo(function LoadingMessage() {
   return (
     <div className="flex gap-3" role="status" aria-label="El asistente está escribiendo">
       <Avatar className="size-8 shrink-0">
@@ -17,4 +18,4 @@ export function LoadingMessage() {
       </div>
     </div>
   );
-}
+});

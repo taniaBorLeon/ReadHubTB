@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import type { User } from "@supabase/supabase-js";
 
 import {
@@ -87,5 +87,8 @@ export function useAuth() {
     }
   }, []);
 
-  return { user, loading, error, login, register, logout };
+  return useMemo(
+    () => ({ user, loading, error, login, register, logout }),
+    [user, loading, error, login, register, logout],
+  );
 }

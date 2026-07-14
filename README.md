@@ -95,7 +95,7 @@ readhub/
 │   ├── (auth)/{login,register}/
 │   ├── (dashboard)/{page,upload,assistant,article/[id]}/
 │   └── api/{chat,articles/[id]/index}/route.ts
-├── components/{ui,layout,navigation,forms,cards,articles,comments,dialogs,chat}/
+├── components/{ui,layout,navigation,forms,cards,articles,comments,chat}/
 ├── hooks/            # useAuth, useArticles, useComments, useLikes, useUpload, useChat
 ├── services/         # 4 del MVP + 4 del sistema RAG (todos server-only estos últimos)
 ├── lib/
@@ -127,10 +127,28 @@ readhub/
 ## CI/CD
 
 `.github/workflows/ci.yml` corre en cada `push` a `main`/`master` y en cada
-`pull_request`: `typecheck` → `lint` → `test` (Vitest) → `test:e2e`
-(Playwright), con reportes publicados como artefactos. Ver
-[`.github/SECRETS.md`](.github/SECRETS.md) para qué secrets hay que
-configurar en GitHub antes de que el job `e2e` pueda pasar.
+`pull_request`, con 4 jobs encadenados por `needs`:
+
+```
+checks (typecheck → lint → vitest)
+   │
+   ▼
+  e2e (Playwright, requiere Secrets de Supabase)
+   │
+   ▼
+performance (Production Build → tamaño de bundle → Lighthouse CI)
+   │
+   ▼
+ deploy (Vercel — solo en push a main/master, solo si todo lo anterior pasó)
+```
+
+Cada job publica sus propios artefactos (`vitest-report`, `playwright-report`,
+`playwright-test-results`, `bundle-size-report`, reportes de Lighthouse). Si
+`performance` falla (bundle por encima del límite o umbral de Lighthouse
+incumplido), `deploy` se salta automáticamente — no hay despliegue sin
+rendimiento validado. Ver [`.github/SECRETS.md`](.github/SECRETS.md) para
+todos los secrets requeridos por `e2e`, `performance` y `deploy` (incluye
+`VERCEL_TOKEN`, `VERCEL_ORG_ID`, `VERCEL_PROJECT_ID` para el despliegue).
 
 Los mismos comandos corren en local desde la raíz del monorepo:
 
@@ -140,6 +158,59 @@ npm run lint        # eslint (apps/web)
 npm run test        # vitest run en apps/web + packages/{database,ai,shared}
 npm run test:e2e    # playwright test (arranca `next dev` automáticamente)
 ```
+
+## Rendimiento
+
+Optimizaciones aplicadas tras la auditoría de Core Web Vitals (sin tocar
+lógica de negocio, flujo RAG, APIs ni arquitectura):
+
+- **`useAuth()` memoizado** (`useMemo` sobre el objeto de retorno) — evita
+  re-renders en cascada en los 3 puntos que consumen el hook.
+- **`React.memo`** en componentes renderizados dentro de listas
+  (`ArticleCard`, `CommentItem`, `SourcesList`, `LoadingMessage`) + instancias
+  de `Intl.DateTimeFormat` hoisteadas a nivel de módulo en vez de recrearse en
+  cada render.
+- **`useUpload`**: las dos subidas independientes (documento + imagen) se
+  paralelizan con `Promise.all` en vez de ejecutarse en serie.
+- **Eliminación de código muerto**: `components/dialogs/ConfirmDialog.tsx` no
+  tenía ningún consumidor en la app y se enviaba igual al bundle del cliente.
+- **`next.config.ts`**: `experimental.optimizePackageImports: ["lucide-react"]`
+  para evitar que el barrel file del paquete de íconos se procese completo.
+
+**Impacto en Core Web Vitals:** estas optimizaciones reducen trabajo de
+scripting en el hilo principal durante interacciones (dar like, comentar,
+usar el asistente) — mejora principalmente **INP**, y en menor medida
+**TBT**/tamaño de bundle inicial. No atacan **LCP** ni **CLS** de raíz: la
+causa principal identificada en la auditoría (todas las páginas son
+`"use client"` y buscan sus datos en un `useEffect` post-mount en vez de vía
+Server Components) requeriría un cambio de arquitectura de datos, fuera de
+alcance de esta ronda de optimizaciones.
+
+El pipeline valida estas mejoras automáticamente en el job `performance`:
+build de producción real, límite de tamaño de bundle
+(`BUNDLE_SIZE_LIMIT_KB` en `ci.yml`, hoy 200 kB de First Load JS compartido) y
+auditoría Lighthouse contra los umbrales de
+[`apps/web/lighthouserc.json`](apps/web/lighthouserc.json) (performance score,
+LCP, CLS, TBT, TTI).
+
+### Buenas prácticas para mantener el rendimiento
+
+- Todo componente que se renderiza dentro de una lista (`*List.tsx`,
+  `.map(...)`) debe envolverse en `React.memo` si recibe props que no cambian
+  en cada render del padre.
+- No crear instancias de `Intl.*`, `RegExp` u objetos de configuración
+  equivalentes dentro del cuerpo de un componente — hoistearlas a nivel de
+  módulo.
+- Antes de agregar `"use client"` a una página o layout nuevo, confirmar que
+  de verdad necesita estado/efectos/APIs del navegador — cada boundary nuevo
+  empuja el fetch de datos a después de la hidratación.
+- Revisar el artefacto `bundle-size-report` en cada PR que agregue una
+  dependencia nueva al cliente; si el límite de `BUNDLE_SIZE_LIMIT_KB` se
+  vuelve un obstáculo real (no una regresión), ajustarlo deliberadamente en
+  `ci.yml`, no eliminarlo.
+- Mantener los umbrales de `apps/web/lighthouserc.json` alineados con las
+  expectativas reales del producto — bajarlos para que el pipeline pase nunca
+  es la solución correcta a una regresión de performance.
 
 ## Decisiones arquitectónicas relevantes
 

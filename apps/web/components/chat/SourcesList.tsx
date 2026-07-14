@@ -1,10 +1,15 @@
+import { memo } from "react";
 import Link from "next/link";
 
 import { Badge } from "@/components/ui/badge";
 import { ROUTES } from "@/lib/constants/routes";
 import type { ChatSource } from "@readhub/types/chat";
 
-export function SourcesList({ sources }: { sources: ChatSource[] }) {
+export const SourcesList = memo(function SourcesList({
+  sources,
+}: {
+  sources: ChatSource[];
+}) {
   if (sources.length === 0) return null;
 
   return (
@@ -31,4 +36,4 @@ export function SourcesList({ sources }: { sources: ChatSource[] }) {
       </ul>
     </div>
   );
-}
+});

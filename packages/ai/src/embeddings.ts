@@ -66,7 +66,10 @@ export async function generateEmbeddings(
   // La API devuelve los resultados con su índice original, pero no garantiza
   // el orden de llegada en el array -- se reordenan explícitamente en vez de
   // asumir que `data[i]` corresponde a `texts[i]`.
-  const embeddings: (number[] | undefined)[] = new Array(texts.length);
+  const embeddings: (number[] | undefined)[] = Array.from(
+    { length: texts.length },
+    () => undefined,
+  );
   for (const item of body.data ?? []) {
     if (item.index >= 0 && item.index < texts.length) {
       embeddings[item.index] = validateEmbedding(item.embedding);

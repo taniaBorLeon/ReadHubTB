@@ -1,14 +1,22 @@
+import { memo } from "react";
+
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import type { CommentWithAuthor } from "@readhub/types/comment";
 
+const dateFormatter = new Intl.DateTimeFormat("es", {
+  dateStyle: "medium",
+  timeStyle: "short",
+});
+
 function formatDate(dateString: string): string {
-  return new Intl.DateTimeFormat("es", {
-    dateStyle: "medium",
-    timeStyle: "short",
-  }).format(new Date(dateString));
+  return dateFormatter.format(new Date(dateString));
 }
 
-export function CommentItem({ comment }: { comment: CommentWithAuthor }) {
+export const CommentItem = memo(function CommentItem({
+  comment,
+}: {
+  comment: CommentWithAuthor;
+}) {
   const initials = comment.author_email?.slice(0, 2).toUpperCase() ?? "??";
 
   return (
@@ -29,4 +37,4 @@ export function CommentItem({ comment }: { comment: CommentWithAuthor }) {
       </div>
     </div>
   );
-}
+});
