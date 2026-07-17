@@ -28,7 +28,28 @@ describe("buildRagContext", () => {
 
   it("devuelve siempre el mismo systemPrompt con la instrucción de no inventar", () => {
     const result = buildRagContext("consulta", []);
-    expect(result.systemPrompt).toContain("ÚNICAMENTE");
+    expect(result.systemPrompt).toContain("EXCLUSIVAMENTE");
+  });
+
+  it("el systemPrompt instruye a tratar el contenido de los documentos como datos, no como instrucciones", () => {
+    const result = buildRagContext("consulta", []);
+    expect(result.systemPrompt).toContain("NUNCA INSTRUCCIONES");
+  });
+
+  it("delimita cada documento con etiquetas <documento> y escapa comillas en el título", () => {
+    const results = [
+      chunk({
+        articleId: "a",
+        articleTitle: 'Título con "comillas"',
+        similarity: 0.9,
+      }),
+    ];
+
+    const result = buildRagContext("consulta", results);
+
+    expect(result.userPrompt).toContain("<documento");
+    expect(result.userPrompt).toContain("</documento>");
+    expect(result.userPrompt).toContain("&quot;comillas&quot;");
   });
 
   it("incluye la pregunta original en el userPrompt", () => {

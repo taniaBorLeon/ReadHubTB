@@ -20,8 +20,8 @@ nombre exacto (sensible a mayúsculas).
 | `NEXT_PUBLIC_SUPABASE_URL` | `packages/database` (todos los clientes), middleware | Panel de Supabase → Settings → API → Project URL | job `e2e` |
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | `packages/database` (cliente de sesión/navegador) | Panel de Supabase → Settings → API → anon public | job `e2e` |
 | `SUPABASE_SERVICE_ROLE_KEY` | `packages/database/service-role`, `packages/ai` (embeddings/RAG), `apps/mcp` | Panel de Supabase → Settings → API → service_role (secreta) | job `e2e` (rutas que la usan, si el flujo probado las toca) |
-| `OPENAI_API_KEY` | `packages/ai/src/embeddings.ts` | platform.openai.com → API keys | job `e2e` (solo si el flujo probado indexa/busca) |
-| `ANTHROPIC_API_KEY` | `packages/ai/src/chat.ts` | console.anthropic.com → API keys | job `e2e` (solo si el flujo probado usa el asistente) |
+| `VOYAGE_API_KEY` | `packages/ai/src/embeddings.ts` | voyageai.com → API keys | job `e2e` (solo si el flujo probado indexa/busca) |
+| `GROQ_API_KEY` | `packages/ai/src/chat.ts` | console.groq.com → API keys | job `e2e` (solo si el flujo probado usa el asistente) |
 | `E2E_USER_EMAIL` | `apps/web/e2e/data/users.ts` | Un usuario real que exista en el proyecto de Supabase de `NEXT_PUBLIC_SUPABASE_URL` | job `e2e` |
 | `E2E_USER_PASSWORD` | `apps/web/e2e/data/users.ts` | Contraseña de esa misma cuenta | job `e2e` |
 
@@ -53,7 +53,7 @@ request). No requiere ningún secret adicional propio.
 El proyecto de Vercel debe tener configurado **Root Directory = `apps/web`**
 en Project Settings (monorepo) y sus propias variables de entorno de
 Production (`NEXT_PUBLIC_SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`,
-`OPENAI_API_KEY`, `ANTHROPIC_API_KEY`) cargadas en el dashboard de Vercel —
+`VOYAGE_API_KEY`, `GROQ_API_KEY`) cargadas en el dashboard de Vercel —
 `vercel pull` las trae automáticamente durante el deploy, no hace falta
 duplicarlas como Secrets de GitHub para este job.
 

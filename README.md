@@ -115,8 +115,8 @@ readhub/
 
 1. Copiar `.env.example` a `.env.local` y completar:
    - `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`
-   - `OPENAI_API_KEY` (embeddings)
-   - `ANTHROPIC_API_KEY` (Claude)
+   - `VOYAGE_API_KEY` (embeddings)
+   - `GROQ_API_KEY` (chat)
 2. Aplicar las migraciones de `supabase/migrations/` contra el proyecto de Supabase (Dashboard → SQL Editor, o Supabase CLI).
 3. `npm install`
 4. `npm run dev`

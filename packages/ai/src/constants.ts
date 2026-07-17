@@ -1,5 +1,9 @@
-export const EMBEDDING_MODEL = "text-embedding-3-small";
-export const EMBEDDING_DIMENSIONS = 1536;
+export const EMBEDDING_MODEL = "voyage-4";
+export const EMBEDDING_DIMENSIONS = 1024;
+
+// Voyage limita a 128 textos por petición; 96 deja margen y coincide con el
+// tamaño de lote usado en la documentación del proveedor para este modelo.
+export const EMBEDDING_BATCH_SIZE = 96;
 
 export const CHUNK_MAX_CHARS = 1800;
 export const CHUNK_OVERLAP_CHARS = 200;
@@ -10,13 +14,16 @@ export const CHUNK_OVERLAP_CHARS = 200;
 // todavía para calibrar empíricamente).
 export const DEFAULT_MATCH_COUNT = 5;
 
-// Umbral de similitud coseno: en embeddings de OpenAI, pares de texto
-// genuinamente relacionados suelen caer entre ~0.75 y ~0.95; por debajo de
-// ~0.7 el resultado suele ser ruido. 0.75 es un piso conservador que filtra
-// coincidencias débiles sin descartar contenido relevante formulado de
-// forma distinta a la consulta. Debe recalibrarse empíricamente una vez
-// existan artículos indexados reales.
-export const DEFAULT_MIN_SIMILARITY = 0.75;
+// Umbral de similitud coseno: recalibrado empíricamente contra voyage-4
+// (0.75 era el valor correcto para OpenAI, pero Voyage produce una escala
+// de similitud distinta y más comprimida). Con artículos reales indexados,
+// coincidencias genuinamente relevantes puntuaron ~0.47-0.61, mientras que
+// contenido no relacionado quedó por debajo de ~0.19 -- 0.35 deja margen de
+// sobra a ambos lados de esa brecha. Es el único origen de este umbral,
+// compartido por match_article_chunks (SQL), vector-search y
+// context-builder; debe volver a calibrarse si cambia el modelo de
+// embeddings.
+export const DEFAULT_MIN_SIMILARITY = 0.35;
 
 // Context Builder -------------------------------------------------------------
 
@@ -39,14 +46,14 @@ export const DEFAULT_MAX_CONTEXT_CHARS = 6000;
 // selección.
 export const DEFAULT_MIN_CHUNK_LENGTH = 40;
 
-// Chat (Claude) ----------------------------------------------------------------
+// Chat (Groq) --------------------------------------------------------------
 
 // Modelo por defecto para respuestas fundamentadas en el conocimiento de
-// ReadHub: Sonnet da el mejor balance calidad/costo/latencia para un asistente
-// de preguntas y respuestas sobre un catálogo de artículos.
-export const CLAUDE_MODEL = "claude-sonnet-5";
+// ReadHub. Sobreescribible por variable de entorno (GROQ_MODEL) sin tocar
+// código si Groq libera un modelo mejor.
+export const GROQ_MODEL = process.env.GROQ_MODEL ?? "llama-3.3-70b-versatile";
 
 // Suficiente para una respuesta fundamentada con citas de fuentes sin
 // permitir divagaciones extensas; configurable por llamada si algún caso de
 // uso futuro necesita respuestas más largas.
-export const CLAUDE_MAX_TOKENS = 1024;
+export const GROQ_MAX_TOKENS = 1024;

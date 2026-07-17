@@ -4,7 +4,7 @@ import { useChat } from "@/hooks/useChat";
 import { ChatWindow } from "@/components/chat/ChatWindow";
 
 export default function AssistantPage() {
-  const { messages, loading, error, sendMessage } = useChat();
+  const { messages, loading, error, sendMessage, stop, reset } = useChat();
 
   return (
     <div className="mx-auto flex max-w-3xl flex-col gap-4">
@@ -22,6 +22,8 @@ export default function AssistantPage() {
         loading={loading}
         error={error}
         onSend={sendMessage}
+        onStop={stop}
+        onReset={reset}
       />
     </div>
   );

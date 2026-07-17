@@ -7,7 +7,7 @@
  * instala el SDK de MCP.
  *
  * A propósito solo se referencian las funciones (no se invocan las que
- * dependen de credenciales reales de Supabase/OpenAI/Anthropic, que este
+ * dependen de credenciales reales de Supabase/Voyage/Groq, que este
  * proceso no tiene por qué tener configuradas todavía) -- comprobar que el
  * import resuelve y que el símbolo es del tipo esperado ya prueba que el
  * módulo compartido es consumible desde aquí.
@@ -33,7 +33,7 @@ import { searchRelevantChunks } from "@readhub/ai/services/vector-search";
 import { buildRagContext } from "@readhub/ai/services/context-builder";
 import { answerQuery } from "@readhub/ai/services/chat";
 import { generateArticleEmbeddings } from "@readhub/ai/services/embedding";
-import { EMBEDDING_MODEL, CLAUDE_MODEL } from "@readhub/ai/constants";
+import { EMBEDDING_MODEL, GROQ_MODEL } from "@readhub/ai/constants";
 
 import { getPublicStorageUrl } from "@readhub/shared/storage-url";
 import { ARTICLES_BUCKET } from "@readhub/shared/storage-constants";
@@ -94,8 +94,8 @@ check(
   typeof generateArticleEmbeddings === "function",
 );
 check(
-  "@readhub/ai/constants: EMBEDDING_MODEL y CLAUDE_MODEL resueltos",
-  typeof EMBEDDING_MODEL === "string" && typeof CLAUDE_MODEL === "string",
+  "@readhub/ai/constants: EMBEDDING_MODEL y GROQ_MODEL resueltos",
+  typeof EMBEDDING_MODEL === "string" && typeof GROQ_MODEL === "string",
 );
 
 // @readhub/shared -- única sin efectos secundarios: se invoca de verdad.

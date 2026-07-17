@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { memo } from "react";
 import { Bot, User } from "lucide-react";
 
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -8,43 +8,16 @@ import { SourcesList } from "@/components/chat/SourcesList";
 import { cn } from "@/lib/utils";
 import type { ChatMessage as ChatMessageType } from "@readhub/types/chat";
 
-const REVEAL_STEP_CHARS = 3;
-const REVEAL_INTERVAL_MS = 15;
-
-export function ChatMessage({
+// Memoizado: el hook reemplaza el array de mensajes en CADA token del
+// streaming, pero solo cambia el objeto del mensaje que crece. Sin memo,
+// cada token repintaría la conversación ENTERA -- en una respuesta de 400
+// tokens con 10 mensajes previos son unos 4000 renders evitables.
+export const ChatMessage = memo(function ChatMessage({
   message,
-  animate = false,
 }: {
   message: ChatMessageType;
-  animate?: boolean;
 }) {
   const isUser = message.role === "user";
-  const [displayedContent, setDisplayedContent] = useState(
-    animate ? "" : message.content,
-  );
-
-  // Revelado progresivo del lado del cliente: chat.service.ts todavía
-  // devuelve la respuesta completa (sin streaming real de Claude, fuera de
-  // alcance de esta fase). Esto simula el efecto de "escritura" sobre el
-  // texto ya recibido, sin requerir cambios en el backend.
-  useEffect(() => {
-    if (!animate) {
-      setDisplayedContent(message.content);
-      return;
-    }
-
-    let index = 0;
-    const interval = setInterval(() => {
-      index += REVEAL_STEP_CHARS;
-      setDisplayedContent(message.content.slice(0, index));
-      if (index >= message.content.length) {
-        clearInterval(interval);
-      }
-    }, REVEAL_INTERVAL_MS);
-
-    return () => clearInterval(interval);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [message.content, animate]);
 
   return (
     <div className={cn("flex gap-3", isUser && "flex-row-reverse")}>
@@ -64,7 +37,13 @@ export function ChatMessage({
         )}
       >
         <p className="whitespace-pre-wrap leading-relaxed">
-          {displayedContent}
+          {message.content}
+          {message.isStreaming && (
+            <span
+              className="ml-0.5 inline-block h-4 w-[2px] translate-y-0.5 animate-pulse bg-current align-middle"
+              aria-hidden="true"
+            />
+          )}
         </p>
         {!isUser && message.sources && message.sources.length > 0 && (
           <SourcesList sources={message.sources} />
@@ -72,4 +51,4 @@ export function ChatMessage({
       </div>
     </div>
   );
-}
+});

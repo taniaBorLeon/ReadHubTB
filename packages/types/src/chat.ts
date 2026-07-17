@@ -12,5 +12,6 @@ export interface ChatMessage {
   sources?: ChatSource[];
   hasContext?: boolean;
   isError?: boolean;
+  isStreaming?: boolean;
   createdAt: string;
 }

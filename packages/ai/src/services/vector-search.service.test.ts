@@ -36,7 +36,7 @@ describe("searchRelevantChunks", () => {
 
     await searchRelevantChunks("  ¿qué es ReadHub?  ");
 
-    expect(generateEmbeddingMock).toHaveBeenCalledWith("¿qué es ReadHub?");
+    expect(generateEmbeddingMock).toHaveBeenCalledWith("¿qué es ReadHub?", "query");
   });
 
   it("usa los valores por defecto de matchCount y minSimilarity cuando no se pasan opciones", async () => {

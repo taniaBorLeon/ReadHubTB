@@ -1,44 +1,103 @@
 import "server-only";
-import Anthropic from "@anthropic-ai/sdk";
+import OpenAI from "openai";
 
-import { CLAUDE_MAX_TOKENS, CLAUDE_MODEL } from "./constants";
+import { GROQ_MAX_TOKENS, GROQ_MODEL } from "./constants";
 
-let client: Anthropic | null = null;
+const GROQ_BASE_URL = "https://api.groq.com/openai/v1";
 
-function getClient(): Anthropic {
+let client: OpenAI | null = null;
+
+function getClient(): OpenAI {
   if (client) return client;
 
-  const apiKey = process.env.ANTHROPIC_API_KEY;
+  const apiKey = process.env.GROQ_API_KEY;
   if (!apiKey) {
-    throw new Error("ANTHROPIC_API_KEY no está configurada.");
+    throw new Error("GROQ_API_KEY no está configurada.");
   }
 
-  client = new Anthropic({ apiKey });
+  client = new OpenAI({ apiKey, baseURL: GROQ_BASE_URL });
   return client;
 }
 
+export interface ChatCompletionUsage {
+  promptTokens: number;
+  completionTokens: number;
+  totalTokens: number;
+}
+
 /**
- * Único punto de contacto con Claude. Ningún otro módulo conoce el SDK, el
- * modelo ni el formato de la petición -- así se puede sustituir el
- * proveedor de generación sin tocar chat.service.ts ni nada río arriba.
+ * Único punto de contacto con Groq. Ningún otro módulo conoce el SDK, la
+ * baseURL ni el modelo -- así se puede sustituir el proveedor de generación
+ * sin tocar chat.service.ts ni nada río arriba. Groq expone una API
+ * compatible con la de OpenAI, así que se reutiliza ese SDK apuntando a otra
+ * baseURL en vez de instalar un cliente propio.
  */
 export async function generateChatCompletion(
   systemPrompt: string,
   userPrompt: string,
 ): Promise<string> {
-  const anthropic = getClient();
+  const groq = getClient();
 
-  const message = await anthropic.messages.create({
-    model: CLAUDE_MODEL,
-    max_tokens: CLAUDE_MAX_TOKENS,
-    system: systemPrompt,
-    messages: [{ role: "user", content: userPrompt }],
+  const completion = await groq.chat.completions.create({
+    model: GROQ_MODEL,
+    max_tokens: GROQ_MAX_TOKENS,
+    messages: [
+      { role: "system", content: systemPrompt },
+      { role: "user", content: userPrompt },
+    ],
   });
 
-  const textBlock = message.content.find((block) => block.type === "text");
-  if (!textBlock || textBlock.type !== "text") {
-    throw new Error("Claude no devolvió contenido de texto.");
+  const content = completion.choices[0]?.message?.content;
+  if (!content) {
+    throw new Error("Groq no devolvió contenido de texto.");
   }
 
-  return textBlock.text;
+  return content;
+}
+
+export interface ChatCompletionStreamEvent {
+  delta?: string;
+  usage?: ChatCompletionUsage;
+}
+
+/**
+ * Variante en streaming, mismo contrato agnóstico del proveedor: emite un
+ * evento por cada fragmento de texto recibido. Pide el uso de tokens
+ * explícitamente vía stream_options.include_usage -- Groq lo entrega en un
+ * último fragmento cuyo `choices` viene vacío, así que ese evento final solo
+ * trae `usage`, nunca `delta`.
+ */
+export async function* generateChatCompletionStream(
+  systemPrompt: string,
+  userPrompt: string,
+): AsyncGenerator<ChatCompletionStreamEvent> {
+  const groq = getClient();
+
+  const stream = await groq.chat.completions.create({
+    model: GROQ_MODEL,
+    max_tokens: GROQ_MAX_TOKENS,
+    stream: true,
+    stream_options: { include_usage: true },
+    messages: [
+      { role: "system", content: systemPrompt },
+      { role: "user", content: userPrompt },
+    ],
+  });
+
+  for await (const chunk of stream) {
+    const delta = chunk.choices[0]?.delta?.content;
+    if (delta) {
+      yield { delta };
+    }
+
+    if (chunk.usage) {
+      yield {
+        usage: {
+          promptTokens: chunk.usage.prompt_tokens,
+          completionTokens: chunk.usage.completion_tokens,
+          totalTokens: chunk.usage.total_tokens,
+        },
+      };
+    }
+  }
 }

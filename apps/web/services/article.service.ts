@@ -24,14 +24,19 @@ export async function getArticle(
 }
 
 function triggerArticleIndexing(articleId: string): void {
-  fetch(`/api/articles/${articleId}/index`, { method: "POST" }).catch(
-    (err) => {
-      console.error(
-        `[rag:index] No se pudo disparar la indexación del artículo ${articleId}`,
-        err,
-      );
-    },
-  );
+  // keepalive: tras publicar, la app redirige al inicio de inmediato. Sin
+  // esta opción el navegador aborta la petición a mitad de camino junto con
+  // la navegación, y el artículo queda publicado pero nunca indexado, sin
+  // ningún error visible en consola.
+  fetch(`/api/articles/${articleId}/index`, {
+    method: "POST",
+    keepalive: true,
+  }).catch((err) => {
+    console.error(
+      `[rag:index] No se pudo disparar la indexación del artículo ${articleId}`,
+      err,
+    );
+  });
 }
 
 export async function createArticle(input: CreateArticleInput) {

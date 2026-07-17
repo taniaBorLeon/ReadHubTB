@@ -28,7 +28,7 @@ export async function searchRelevantChunks(
   const matchCount = options.matchCount ?? DEFAULT_MATCH_COUNT;
   const minSimilarity = options.minSimilarity ?? DEFAULT_MIN_SIMILARITY;
 
-  const queryEmbedding = await generateEmbedding(trimmedQuery);
+  const queryEmbedding = await generateEmbedding(trimmedQuery, "query");
 
   const supabase = createServiceRoleClient();
   const { data, error } = await supabase.rpc("match_article_chunks", {

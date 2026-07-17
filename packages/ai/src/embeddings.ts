@@ -1,8 +1,14 @@
 import "server-only";
 
-import { EMBEDDING_DIMENSIONS, EMBEDDING_MODEL } from "./constants";
+import {
+  EMBEDDING_BATCH_SIZE,
+  EMBEDDING_DIMENSIONS,
+  EMBEDDING_MODEL,
+} from "./constants";
 
-interface OpenAIEmbeddingResponse {
+export type EmbeddingInputType = "query" | "document";
+
+interface VoyageEmbeddingResponse {
   data: { index: number; embedding: number[] }[];
 }
 
@@ -22,27 +28,24 @@ function validateEmbedding(embedding: number[] | undefined): number[] {
   return embedding;
 }
 
-/**
- * Único punto de contacto con el proveedor de embeddings (OpenAI). Ningún
- * otro módulo debe conocer el endpoint, el modelo ni el formato de la
- * petición — así se puede cambiar de proveedor sin tocar quien lo consume.
- *
- * Acepta uno o varios textos en una sola petición: el endpoint de OpenAI
- * soporta `input` como array de forma nativa, así que indexar un artículo
- * con N chunks cuesta 1 llamada HTTP en vez de N (menos overhead de red y
- * mucho menor riesgo de rate limit frente a N llamadas paralelas).
- */
-export async function generateEmbeddings(
-  texts: string[],
-): Promise<number[][]> {
-  if (texts.length === 0) return [];
+function chunkArray<T>(items: T[], size: number): T[][] {
+  const batches: T[][] = [];
+  for (let start = 0; start < items.length; start += size) {
+    batches.push(items.slice(start, start + size));
+  }
+  return batches;
+}
 
-  const apiKey = process.env.OPENAI_API_KEY;
+async function requestEmbeddingBatch(
+  texts: string[],
+  inputType: EmbeddingInputType,
+): Promise<number[][]> {
+  const apiKey = process.env.VOYAGE_API_KEY;
   if (!apiKey) {
-    throw new Error("OPENAI_API_KEY no está configurada.");
+    throw new Error("VOYAGE_API_KEY no está configurada.");
   }
 
-  const response = await fetch("https://api.openai.com/v1/embeddings", {
+  const response = await fetch("https://api.voyageai.com/v1/embeddings", {
     method: "POST",
     headers: {
       Authorization: `Bearer ${apiKey}`,
@@ -51,19 +54,21 @@ export async function generateEmbeddings(
     body: JSON.stringify({
       model: EMBEDDING_MODEL,
       input: texts,
+      input_type: inputType,
     }),
   });
 
   if (!response.ok) {
-    const errorBody = await response.text();
+    // No se expone el cuerpo crudo de la respuesta: podría filtrar detalles
+    // internos del proveedor (mensajes de cuota, identificadores de cuenta).
     throw new Error(
-      `Error generando embeddings (${response.status}): ${errorBody}`,
+      `Error generando embeddings (${response.status}) con el proveedor de embeddings.`,
     );
   }
 
-  const body = (await response.json()) as OpenAIEmbeddingResponse;
+  const body = (await response.json()) as VoyageEmbeddingResponse;
 
-  // La API devuelve los resultados con su índice original, pero no garantiza
+  // Voyage devuelve los resultados con su índice original, pero no garantiza
   // el orden de llegada en el array -- se reordenan explícitamente en vez de
   // asumir que `data[i]` corresponde a `texts[i]`.
   const embeddings: (number[] | undefined)[] = Array.from(
@@ -92,7 +97,43 @@ export async function generateEmbeddings(
   return embeddings as number[][];
 }
 
-export async function generateEmbedding(text: string): Promise<number[]> {
-  const [embedding] = await generateEmbeddings([text]);
+/**
+ * Único punto de contacto con el proveedor de embeddings (Voyage). Ningún
+ * otro módulo debe conocer el endpoint, el modelo ni el formato de la
+ * petición -- así se puede cambiar de proveedor sin tocar quien lo consume.
+ *
+ * `inputType` distingue consulta ("query") de documento indexado
+ * ("document"): Voyage proyecta ambos de forma distinta y usar el mismo para
+ * los dos no da error, solo degrada la calidad de la recuperación en
+ * silencio.
+ *
+ * Trocea en lotes de EMBEDDING_BATCH_SIZE: el proveedor limita cuántos
+ * textos acepta por petición, así que indexar un artículo con muchos chunks
+ * puede requerir varias llamadas HTTP secuenciales.
+ */
+export async function generateEmbeddings(
+  texts: string[],
+  inputType: EmbeddingInputType,
+): Promise<number[][]> {
+  if (texts.length === 0) return [];
+
+  const batches = chunkArray(texts, EMBEDDING_BATCH_SIZE);
+  const results: number[][] = [];
+  for (const batch of batches) {
+    results.push(...(await requestEmbeddingBatch(batch, inputType)));
+  }
+  return results;
+}
+
+export async function generateEmbedding(
+  text: string,
+  inputType: EmbeddingInputType,
+): Promise<number[]> {
+  const [embedding] = await generateEmbeddings([text], inputType);
   return embedding;
+}
+
+/** Serializa un vector al literal que espera pgvector: "[0.1,0.2,...]". */
+export function toPgvectorLiteral(embedding: number[]): string {
+  return `[${embedding.join(",")}]`;
 }

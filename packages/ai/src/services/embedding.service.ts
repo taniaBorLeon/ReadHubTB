@@ -151,7 +151,7 @@ export async function generateArticleEmbeddings(
   // chunk): menos overhead de red y evita disparar N llamadas simultáneas al
   // proveedor de embeddings, que es lo que realmente puede gatillar rate
   // limits en artículos con muchos fragmentos.
-  const embeddings = await generateEmbeddings(composedChunks);
+  const embeddings = await generateEmbeddings(composedChunks, "document");
 
   const rows = composedChunks.map((composedText, chunkIndex) => {
     const embedding = embeddings[chunkIndex];

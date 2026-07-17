@@ -102,6 +102,7 @@ describe("createArticle", () => {
 
     expect(fetch).toHaveBeenCalledWith("/api/articles/new-article/index", {
       method: "POST",
+      keepalive: true,
     });
   });
 

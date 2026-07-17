@@ -1,28 +1,34 @@
 "use client";
 
 import { useState, type FormEvent, type KeyboardEvent } from "react";
-import { Send } from "lucide-react";
+import { Send, Square } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 
 export function ChatInput({
   onSend,
-  disabled,
+  onStop,
+  loading,
 }: {
   onSend: (text: string) => void;
-  disabled?: boolean;
+  onStop: () => void;
+  loading?: boolean;
 }) {
   const [value, setValue] = useState("");
 
   function submit() {
-    if (!value.trim() || disabled) return;
+    if (!value.trim() || loading) return;
     onSend(value);
     setValue("");
   }
 
   function handleSubmit(event: FormEvent) {
     event.preventDefault();
+    if (loading) {
+      onStop();
+      return;
+    }
     submit();
   }
 
@@ -41,18 +47,29 @@ export function ChatInput({
         onKeyDown={handleKeyDown}
         placeholder="Pregúntale algo a ReadHub..."
         rows={1}
-        disabled={disabled}
+        disabled={loading}
         aria-label="Escribe tu consulta para el asistente"
         className="min-h-[44px] flex-1 resize-none"
       />
-      <Button
-        type="submit"
-        size="icon"
-        disabled={disabled || !value.trim()}
-        aria-label="Enviar consulta"
-      >
-        <Send />
-      </Button>
+      {loading ? (
+        <Button
+          type="submit"
+          size="icon"
+          variant="destructive"
+          aria-label="Detener respuesta"
+        >
+          <Square />
+        </Button>
+      ) : (
+        <Button
+          type="submit"
+          size="icon"
+          disabled={!value.trim()}
+          aria-label="Enviar consulta"
+        >
+          <Send />
+        </Button>
+      )}
     </form>
   );
 }
